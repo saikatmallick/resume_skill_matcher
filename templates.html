@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Resume Skill Matcher</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: white;
+        }
+        
+        #canvas-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+        
+        #analyze-btn {
+            pointer-events: auto;
+            padding: 25px 50px;
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(45deg, #ff6b6b, #ffa3a3);
+            color: white;
+            border: none;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #analyze-btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(255, 107, 107, 0.6);
+        }
+        
+        #analyze-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+        
+        #analyze-btn:hover::before {
+            left: 100%;
+        }
+        
+        .floating-text {
+            position: absolute;
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0;
+            pointer-events: none;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s;
+        }
+        
+        #title {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 64px;
+            font-weight: 700;
+            opacity: 0;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.7);
+            background: linear-gradient(45deg, #f6d365, #fda085, #ff6b6b, #c779d0, #4bc0c8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 300% 300%;
+            animation: gradientBG 8s ease infinite;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50% }
+            50% { background-position: 100% 50% }
+            100% { background-position: 0% 50% }
+        }
+        
+        #subtitle {
+            position: absolute;
+            top: 28%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            opacity: 0;
+            color: rgba(255, 255, 255, 0.8);
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.6;
+        }
+        
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .pulse-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="particles-js"></div>
+    <div id="ui-container">
+        <h1 id="title">SkillSync Pro</h1>
+        <p id="subtitle">Match your resume skills with ideal career paths in real-time</p>
+        <button id="analyze-btn" onclick="window.location.href='index.html'">Analyze Resume</button>
+    </div>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.7.1/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    
+    <script>
+        // Three.js Setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0f0c29, 0.02);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true, 
+            alpha: true,
+            powerPreference: "high-performance"
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Camera position
+        camera.position.z = 30;
+
+        // Enhanced Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(5, 10, 7);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
+        scene.add(directionalLight);
+
+        const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
+        scene.add(hemisphereLight);
+
+        // Create colorful floating skill elements
+        const skills = [
+            "JavaScript", "Python", "React", "Node.js", "Three.js", 
+            "GSAP", "Anime.js", "HTML5", "CSS3", "WebGL",
+            "UI/UX", "Frontend", "Backend", "Database", "API",
+            "Git", "Docker", "AWS", "Machine Learning", "Data Science",
+            "TypeScript", "GraphQL", "Vue", "Angular", "Svelte",
+            "TensorFlow", "PyTorch", "Kubernetes", "CI/CD", "REST"
+        ];
+
+        const skillObjects = [];
+        const skillGeometries = [
+            new THREE.IcosahedronGeometry(0.6, 0),
+            new THREE.OctahedronGeometry(0.7),
+            new THREE.TetrahedronGeometry(0.8),
+            new THREE.DodecahedronGeometry(0.5),
+            new THREE.TorusGeometry(0.4, 0.2, 16, 32)
+        ];
+
+        skills.forEach((skill, i) => {
+            const randomShape = skillGeometries[Math.floor(Math.random() * skillGeometries.length)];
+            const hue = (i / skills.length) * 0.8 + 0.1;
+            const saturation = 0.7 + Math.random() * 0.2;
+            const lightness = 0.5 + Math.random() * 0.2;
+            
+            const skillMaterial = new THREE.MeshPhongMaterial({
+                color: new THREE.Color().setHSL(hue, saturation, lightness),
+                emissive: new THREE.Color().setHSL(hue, saturation, lightness * 0.3),
+                emissiveIntensity: 0.5,
+                shininess: 50,
+                flatShading: true,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const skillMesh = new THREE.Mesh(randomShape, skillMaterial);
+            
+            // Position in a dynamic pattern
+            const radius = 8 + Math.random() * 8;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+            
+            skillMesh.position.setFromSphericalCoords(radius, phi, theta);
+            
+            // Add slight rotation
+            skillMesh.rotation.set(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+            );
+            
+            // Store animation properties
+            skillMesh.userData = {
+                originalPosition: skillMesh.position.clone(),
+                speed: 0.005 + Math.random() * 0.01,
+                angle: Math.random() * Math.PI * 2,
+                rotationSpeed: new THREE.Vector3(
+                    Math.random() * 0.01 - 0.005,
+                    Math.random() * 0.01 - 0.005,
+                    Math.random() * 0.01 - 0.005
+                )
+            };
+            
+            scene.add(skillMesh);
+            skillObjects.push(skillMesh);
+            
+            // Create DOM element for text
+            const textElement = document.createElement('div');
+            textElement.className = 'floating-text';
+            textElement.textContent = skill;
+            textElement.style.color = `hsl(${hue * 360}, ${saturation * 100}%, ${lightness * 100}%)`;
+            document.body.appendChild(textElement);
+            
+            skillMesh.userData.textElement = textElement;
+        });
+
+        // Central interactive element
+        const centralGeometry = new THREE.TorusKnotGeometry(3, 1, 256, 32, 2, 3);
+        const centralMaterial = new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            emissive: 0x4bc0c8,
+            emissiveIntensity: 0.3,
+            shininess: 100,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.7
+        });
+        const centralElement = new THREE.Mesh(centralGeometry, centralMaterial);
+        scene.add(centralElement);
+
+        // Particle system background
+        particlesJS('particles-js', {
+            "particles": {
+                "number": { "value": 80, "density": { "enable": true, "value_area": 800 } },
+                "color": { "value": "#ffffff" },
+                "shape": { "type": "circle" },
+                "opacity": { "value": 0.3, "random": true },
+                "size": { "value": 3, "random": true },
+                "line_linked": { "enable": true, "distance": 150, "color": "#ffffff", "opacity": 0.2, "width": 1 },
+                "move": { "enable": true, "speed": 2, "direction": "none", "random": true, "straight": false, "out_mode": "out" }
+            },
+            "interactivity": {
+                "detect_on": "canvas",
+                "events": {
+                    "onhover": { "enable": true, "mode": "repulse" },
+                    "onclick": { "enable": true, "mode": "push" },
+                    "resize": true
+                }
+            }
+        });
+
+        // Animation variables
+        let time = 0;
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const title = document.getElementById('title');
+        const subtitle = document.getElementById('subtitle');
+
+        // GSAP animations for UI
+        gsap.fromTo(title, 
+            { opacity: 0, y: -50 },
+            { 
+                opacity: 1, 
+                y: 0, 
+                duration: 2, 
+                delay: 0.5, 
+                ease: "elastic.out(1, 0.5)" 
+            }
+        );
+        
+        gsap.fromTo(subtitle, 
+            { opacity: 0, y: -30 },
+            { 
+                opacity: 0.8, 
+                y: 0, 
+                duration: 1.5, 
+                delay: 1.2, 
+                ease: "power3.out",
+                onComplete: () => {
+                    // Animate floating text appearance
+                    skillObjects.forEach((obj, i) => {
+                        gsap.to(obj.userData.textElement, {
+                            opacity: 0.9,
+                            duration: 0.8,
+                            delay: i * 0.03,
+                            ease: "power2.out"
+                        });
+                    });
+                }
+            }
+        );
+
+        // Create pulse effect circles
+        function createPulseCircle(x, y, color) {
+            const circle = document.createElement('div');
+            circle.className = 'pulse-circle';
+            circle.style.left = `${x}px`;
+            circle.style.top = `${y}px`;
+            circle.style.backgroundColor = color;
+            document.body.appendChild(circle);
+            
+            gsap.to(circle, {
+                width: 300,
+                height: 300,
+                opacity: 0,
+                duration: 1.5,
+                ease: "power2.out",
+                onComplete: () => {
+                    document.body.removeChild(circle);
+                }
+            });
+        }
+
+        // Analyze button click handler
+        analyzeBtn.addEventListener('click', (e) => {
+            // Create pulse effect
+            createPulseCircle(e.clientX, e.clientY, 'rgba(255, 107, 107, 0.5)');
+            
+            // Button animation
+            gsap.to(analyzeBtn, {
+                scale: 0.9,
+                duration: 0.2,
+                yoyo: true,
+                repeat: 1,
+                ease: "power2.inOut"
+            });
+            
+            // Central element animation
+            gsap.to(centralElement.rotation, {
+                x: centralElement.rotation.x + Math.PI * 2,
+                y: centralElement.rotation.y + Math.PI,
+                duration: 3,
+                ease: "power2.inOut"
+            });
+            
+            gsap.to(centralElement.scale, {
+                x: 1.5,
+                y: 1.5,
+                z: 1.5,
+                duration: 1,
+                yoyo: true,
+                repeat: 1,
+                ease: "elastic.out(1, 0.5)"
+            });
+            
+            // Change central element color
+            anime({
+                targets: centralMaterial.color,
+                r: Math.random(),
+                g: Math.random(),
+                b: Math.random(),
+                duration: 2000,
+                easing: 'easeOutQuad'
+            });
+            
+            // Skill objects animation
+            skillObjects.forEach(obj => {
+                // Random new position
+                const newPos = obj.userData.originalPosition.clone()
+                    .multiplyScalar(0.5 + Math.random())
+                    .add(new THREE.Vector3(
+                        (Math.random() - 0.5) * 10,
+                        (Math.random() - 0.5) * 10,
+                        (Math.random() - 0.5) * 10
+                    ));
+                
+                // Animate to new position
+                gsap.to(obj.position, {
+                    x: newPos.x,
+                    y: newPos.y,
+                    z: newPos.z,
+                    duration: 2,
+                    ease: "elastic.out(1, 0.3)",
+                    delay: Math.random() * 0.5
+                });
+                
+                // Increase rotation speed temporarily
+                obj.userData.rotationSpeed.multiplyScalar(3);
+                setTimeout(() => {
+                    obj.userData.rotationSpeed.divideScalar(3);
+                }, 2000);
+            });
+            
+            // Create connection lines between skills
+            createSkillConnections();
+        });
+
+        function createSkillConnections() {
+            // Remove any existing lines
+            scene.children.filter(child => child.userData.isConnection).forEach(line => scene.remove(line));
+            
+            // Create connections between random skills
+            for (let i = 0; i < skillObjects.length / 2; i++) {
+                const skill1 = skillObjects[Math.floor(Math.random() * skillObjects.length)];
+                const skill2 = skillObjects[Math.floor(Math.random() * skillObjects.length)];
+                
+                if (skill1 !== skill2) {
+                    const geometry = new THREE.BufferGeometry().setFromPoints([
+                        skill1.position,
+                        skill2.position
+                    ]);
+                    
+                    const material = new THREE.LineBasicMaterial({
+                        color: 0xffffff,
+                        transparent: true,
+                        opacity: 0.3,
+                        linewidth: 1
+                    });
+                    
+                    const line = new THREE.Line(geometry, material);
+                    line.userData.isConnection = true;
+                    scene.add(line);
+                    
+                    // Animate line appearance
+                    gsap.fromTo(material, 
+                        { opacity: 0 },
+                        { 
+                            opacity: 0.3, 
+                            duration: 1,
+                            onComplete: () => {
+                                gsap.to(material, {
+                                    opacity: 0,
+                                    duration: 1,
+                                    delay: 1,
+                                    onComplete: () => scene.remove(line)
+                                });
+                            }
+                        }
+                    );
+                }
+            }
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+            
+            // Rotate central element
+            centralElement.rotation.x += 0.005;
+            centralElement.rotation.y += 0.007;
+            
+            // Animate skill objects
+            skillObjects.forEach(obj => {
+                // Orbital motion
+                obj.userData.angle += obj.userData.speed;
+                const radiusVariation = Math.sin(time * obj.userData.speed * 0.5) * 2;
+                
+                const newPos = obj.userData.originalPosition.clone()
+                    .multiplyScalar(1 + radiusVariation * 0.1)
+                    .applyAxisAngle(
+                        new THREE.Vector3(
+                            Math.sin(obj.userData.angle),
+                            Math.cos(obj.userData.angle * 0.7),
+                            Math.sin(obj.userData.angle * 0.3)
+                        ).normalize(),
+                        obj.userData.speed
+                    );
+                
+                obj.position.lerp(newPos, 0.1);
+                
+                // Rotation
+                obj.rotation.x += obj.userData.rotationSpeed.x;
+                obj.rotation.y += obj.userData.rotationSpeed.y;
+                obj.rotation.z += obj.userData.rotationSpeed.z;
+                
+                // Pulsing scale
+                obj.scale.setScalar(1 + Math.sin(time * obj.userData.speed * 2) * 0.1);
+                
+                // Update text position
+                if (obj.userData.textElement) {
+                    const vector = obj.position.clone().project(camera);
+                    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+                    
+                    obj.userData.textElement.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+                    obj.userData.textElement.style.opacity = vector.z > 0 ? 0.9 : 0;
+                    obj.userData.textElement.style.fontSize = `${14 + Math.sin(time * 2) * 2}px`;
+                }
+            });
+            
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
